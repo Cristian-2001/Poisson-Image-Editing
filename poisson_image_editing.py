@@ -65,6 +65,14 @@ def poisson_editing(source, target, mask, offset=(0, 0), mixed=False):
             index = i * region_size[1] + j
             if mask[i, j] == 255:
                 A[index, index] = 4
+                if i == 0:
+                    A[index, index] -= 1
+                if i == region_size[0] - 1:
+                    A[index, index] -= 1
+                if j == 0:
+                    A[index, index] -= 1
+                if j == region_size[1] - 1:
+                    A[index, index] -= 1
 
                 if index + 1 < size and flt_mask[index + 1] == 255:
                     A[index + 1, index] = -1
@@ -199,8 +207,8 @@ if __name__ == '__main__':
 
     # result = poisson_editing(source, target, mask, offset=(40, -30))
     # cv2.imwrite('testimages/result.png', 255 * result)
-    result = poisson_editing(source, target, mask, mixed=True)
-    cv2.imwrite('rainbow/result2_mixed.jpg', 255 * result)
+    result = poisson_editing(source, target, mask, offset=(-190, 0), mixed=True)
+    cv2.imwrite('rainbow/result2_mixed_offset.jpg', 255 * result)
     cv2.imshow('result', result)
     cv2.waitKey(0)
     cv2.destroyAllWindows()
