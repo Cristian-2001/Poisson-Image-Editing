@@ -267,10 +267,10 @@ def texture_flattening(source, mask):
     return source
 
 
-# def save_images(dir, source, target, mask):
-#     cv2.imwrite(dir + '/source_finale.jpg', source)
-#     cv2.imwrite(dir + '/target_finale.jpg', target)
-#     cv2.imwrite(dir + '/mask_finale.jpg', mask)
+def save_images(dir, source, target, mask):
+    source.save(dir + '/risultati_finali/source_finale.jpg', 'JPEG')
+    target.save(dir + '/risultati_finali/target_finale.jpg', 'JPEG')
+    mask.save(dir + '/risultati_finali/mask_finale.jpg', 'JPEG')
 
 
 if __name__ == '__main__':
@@ -288,25 +288,37 @@ if __name__ == '__main__':
     # im_result.save('testimages/result.png', 'PNG')
     # im_result.show()
 
-    # source = Image.open('pera/final_imgs/source_finale.jpg')
+    '''Pera'''
+    # source = Image.open('pera/pomodoro2.jpg')
     # source = ImageOps.grayscale(source)
-    # target = Image.open('pera/final_imgs/target_finale.jpg')
-    # mask = Image.open('pera/final_imgs/mask_finale.jpg')
+    # target = Image.open('pera/pera_target2.jpg')
+    # mask = Image.open('pera/pomodoro_mask.jpg')
     # mask = ImageOps.grayscale(mask)
+    #
+    # source = source.resize((source.size[0] // 4, source.size[1] // 4))
+    # target = target.resize((target.size[0] // 4, target.size[1] // 4))
+    # mask = mask.resize((mask.size[0] // 4, mask.size[1] // 4))
+    # save_images("pera", source, target, mask)
     #
     # source_array = np.array(source)
     # target_array = np.array(target)
     # mask_array = np.array(mask)
     #
-    # result = poisson_editing(source_array, target_array, mask_array, mixing=True)
+    # result = poisson_editing(source_array, target_array, mask_array, offset=(50, 30), mixing=True)
     # im_result = Image.fromarray((result * 255).astype(np.uint8))
-    # im_result.save('pera/final_imgs/result3_monochrome_mixed.jpg', 'JPEG')
+    # im_result.save('pera/risultati_finali/result_monochrome_mixed.jpg', 'JPEG')
     # im_result.show()
 
-    # source = Image.open('lavagna/final_imgs/source_finale.jpg')
-    # target = Image.open('lavagna/final_imgs/target_finale.jpg')
-    # mask = Image.open('lavagna/final_imgs/mask_finale.jpg')
+    '''Lavagna'''
+    # source = Image.open('lavagna/source2.jpg')
+    # target = Image.open('lavagna/target.jpg')
+    # mask = Image.open('lavagna/mask2.jpg')
     # mask = ImageOps.grayscale(mask)
+    #
+    # source = source.resize((source.size[0] // 4, source.size[1] // 4))
+    # target = target.resize((target.size[0] // 4, target.size[1] // 4))
+    # mask = mask.resize((mask.size[0] // 4, mask.size[1] // 4))
+    # save_images("lavagna", source, target, mask)
     #
     # source_array = np.array(source)
     # target_array = np.array(target)
@@ -314,14 +326,59 @@ if __name__ == '__main__':
     #
     # result = poisson_editing(source_array, target_array, mask_array, mixing=True)
     # im_result = Image.fromarray((result * 255).astype(np.uint8))
-    # im_result.save('lavagna/final_imgs/result3_mixed.jpg', 'JPEG')
+    # im_result.save('lavagna/risultati_finali/result_mixed.jpg', 'JPEG')
+    # im_result.show()
+
+    '''Sea'''
+    # source = Image.open('sea/source.jpg')
+    # target = Image.open('sea/target.jpg')
+    # mask = Image.open('sea/mask.jpg')
+    # mask = ImageOps.grayscale(mask)
+    #
+    # source = source.resize((source.size[0] // 4, source.size[1] // 4))
+    # target = target.resize((target.size[0] // 4, target.size[1] // 4))
+    # mask = mask.resize((mask.size[0] // 4, mask.size[1] // 4))
+    # save_images("sea", source, target, mask)
+    #
+    # source_array = np.array(source)
+    # target_array = np.array(target)
+    # mask_array = np.array(mask)
+    #
+    # result = poisson_editing(source_array, target_array, mask_array, offset=(100, -100), mixing=False)
+    # im_result = Image.fromarray((result * 255).astype(np.uint8))
+    # im_result.save('sea/risultati_finali/result.jpg', 'JPEG')
+    # im_result.show()
+
+    '''Rainbow'''
+    # source = Image.open('rainbow/source.jpg')
+    # target = Image.open('rainbow/target2.jpg')
+    # mask = Image.open('rainbow/mask.jpg')
+    # mask = ImageOps.grayscale(mask)
+    #
+    # source = source.resize((source.size[0] // 4, source.size[1] // 4))
+    # target = target.resize((target.size[0] // 4, target.size[1] // 4))
+    # mask = mask.resize((mask.size[0] // 4, mask.size[1] // 4))
+    # save_images("rainbow", source, target, mask)
+    #
+    # source_array = np.array(source)
+    # target_array = np.array(target)
+    # mask_array = np.array(mask)
+    #
+    # result = poisson_editing(source_array, target_array, mask_array, offset=(-365, 0), mixing=True)
+    # im_result = Image.fromarray((result * 255).astype(np.uint8))
+    # im_result.save('rainbow/risultati_finali/result_mixed.jpg', 'JPEG')
     # im_result.show()
 
     '''Local color changes'''
-    source = Image.open('flower/source_res.jpg')
-    target = Image.open('flower/source_res.jpg').convert('L')
+    source = Image.open('flower/source.jpg')
+    target = Image.open('flower/source.jpg').convert('L')
     mask = Image.open('flower/mask.jpg')
     mask = ImageOps.grayscale(mask)
+
+    source = source.resize((source.size[0] // 4, source.size[1] // 4))
+    target = target.resize((target.size[0] // 4, target.size[1] // 4))
+    mask = mask.resize((mask.size[0] // 4, mask.size[1] // 4))
+    save_images("flower", source, target, mask)
 
     source_array = np.array(source)
     target_array = np.array(target)
@@ -329,63 +386,5 @@ if __name__ == '__main__':
 
     result = poisson_editing(source_array, target_array, mask_array, mixing=False)
     im_result = Image.fromarray((result * 255).astype(np.uint8))
-    im_result.save('flower/result.jpg', 'JPEG')
+    im_result.save('flower/risultati_finali/result.jpg', 'JPEG')
     im_result.show()
-
-    # source = cv2.imread('testimages/test1_src.png')
-    # target = cv2.imread('testimages/test1_target.png')
-    # mask = cv2.imread('testimages/test1_mask.png', cv2.IMREAD_GRAYSCALE)
-
-    # source = cv2.imread('pera/pomodoro2.jpg', cv2.IMREAD_GRAYSCALE)
-    # target = cv2.imread('pera/pera_target2.jpg')
-    # mask = cv2.imread('pera/pomodoro_mask.jpg', cv2.IMREAD_GRAYSCALE)
-    # source = cv2.resize(source, (500, 500))
-    # target = cv2.resize(target, (500, 500))
-    # mask = cv2.resize(mask, (500, 500))
-
-    # source = cv2.imread('images1/source.jpg')
-    # target = cv2.imread('images1/target.jpg')
-    # mask = cv2.imread('images1/mask_sun.jpg', cv2.IMREAD_GRAYSCALE)
-    # source = cv2.resize(source, (500, 500))
-    # target = cv2.resize(target, (500, 500))
-    # mask = cv2.resize(mask, (500, 500))
-
-    # source = cv2.imread('images2/source.jpg')
-    # target = cv2.imread('images2/target.jpg')
-    # mask = cv2.imread('images2/mask.jpg', cv2.IMREAD_GRAYSCALE)
-    # source = cv2.resize(source, (500, 500))
-    # target = cv2.resize(target, (500, 500))
-    # mask = cv2.resize(mask, (500, 500))
-
-    # source = cv2.imread('lavagna/source2.jpg')
-    # target = cv2.imread('lavagna/target.jpg')
-    # mask = cv2.imread('lavagna/mask2.jpg', cv2.IMREAD_GRAYSCALE)
-    # source = cv2.resize(source, (500, 500))
-    # # source = 255 - source
-    # # cv2.imshow('source', source)
-    # target = cv2.resize(target, (500, 500))
-    # mask = cv2.resize(mask, (500, 500))
-
-    # source = cv2.imread('rainbow/source.jpg')
-    # target = cv2.imread('rainbow/target2.jpg')
-    # mask = cv2.imread('rainbow/mask.jpg', cv2.IMREAD_GRAYSCALE)
-    # source = cv2.resize(source, (500, 500))
-    # target = cv2.resize(target, (500, 500))
-    # mask = cv2.resize(mask, (500, 500))
-
-    # save_images("pera", source, target, mask)
-
-    # result = poisson_editing(source, target, mask, offset=(40, -30))
-    # cv2.imwrite('testimages/result.png', 255 * result)
-    # result = poisson_editing(source, target, mask, offset=(-140, 0), mixed=True)
-    # result = poisson_editing(source, target, mask, mixed=True)
-    # cv2.imwrite('pera/result3_monochrome_mixed.jpg', 255 * result)
-
-    # source = cv2.imread('images2/target_finale.jpg')
-    # mask = cv2.imread('images2/mask_texture_flattening.jpg', cv2.IMREAD_GRAYSCALE)
-    # result = texture_flattening(source, mask)
-    # cv2.imwrite('images2/result_texture_flattening.jpg', 255 * result)
-
-    # cv2.imshow('result', result)
-    # cv2.waitKey(0)
-    # cv2.destroyAllWindows()
