@@ -1,6 +1,5 @@
 import numpy as np
-# import cv2
-from PIL import Image, ImageOps
+from PIL import Image, ImageOps, ImageFilter
 import scipy.sparse
 from scipy.sparse.linalg import spsolve
 
@@ -176,13 +175,23 @@ def poisson_editing(source, target, mask, offset=(0, 0), mixing=False):
     return target
 
 
-def texture_flattening(source, mask):
+def texture_flattening(source, grayscale_src, mask):
     source = source.astype(np.float32) / 255.0
 
-    tmp_source = cv2.cvtColor(source, cv2.COLOR_BGR2GRAY)
-    tmp_source = np.uint8(tmp_source * 255)
-    edges = cv2.Canny(tmp_source, 100, 200)
+    edges_im = grayscale_src.filter(ImageFilter.FIND_EDGES)
+    # edges_im.show()
+    edges = np.array(edges_im)
+    for i in range(edges.shape[0]):
+        for j in range(edges.shape[1]):
+            if edges[i, j] > 10:
+                edges[i, j] = 255
+            else:
+                edges[i, j] = 0
 
+    target = source
+
+    source_region, target_region, region_size = compute_regions(source, target, (0, 0))
+    mask = mask[source_region[0]:source_region[2], source_region[1]:source_region[3]]
     mask, mask_border = preprocess_mask(mask)
     flt_mask = mask.flatten()
 
@@ -212,59 +221,75 @@ def texture_flattening(source, mask):
                     A[index, index - source.shape[1]] = -1
     A = A.tocsr()
 
-    for channel in range(source.shape[2]):
+    for channel in range(target.shape[2]):
         b = np.zeros(size, dtype=np.float32)
-        s = source[:, :, channel]
 
-        for i in range(source.shape[0]):
-            for j in range(source.shape[1]):
-                index = i * source.shape[1] + j
+        if len(target.shape) > 2:
+            t = target[target_region[0]:target_region[2], target_region[1]:target_region[3], channel]
+        else:
+            t = target[target_region[0]:target_region[2], target_region[1]:target_region[3]]
+
+        if len(source.shape) > 2:
+            s = source[source_region[0]:source_region[2], source_region[1]:source_region[3], channel]
+        else:
+            s = source[source_region[0]:source_region[2], source_region[1]:source_region[3]]
+        # t = t.flatten()
+        # s = s.flatten()
+
+        for i in range(region_size[0]):
+            for j in range(region_size[1]):
+                index = i * mask.shape[1] + j
                 if mask[i, j] == 255:
                     if i > 0:
                         diff_g = s[i, j] - s[i - 1, j]
-                        if edges[i, j] > 0:
+                        if edges[i, j] == 255 or edges[i - 1, j] == 255:
                             b[index] += diff_g
                         else:
                             b[index] += 0
                         if (i - 1, j) in mask_border:
-                            b[index] += s[i - 1, j]
+                            b[index] += t[i - 1, j]
 
                     if i < mask.shape[0] - 1:
                         diff_g = s[i, j] - s[i + 1, j]
-                        if edges[i, j] > 0:
+                        if edges[i, j] == 255 or edges[i + 1, j] == 255:
                             b[index] += diff_g
                         else:
                             b[index] += 0
                         if (i + 1, j) in mask_border:
-                            b[index] += s[i + 1, j]
+                            b[index] += t[i + 1, j]
 
                     if j > 0:
                         diff_g = s[i, j] - s[i, j - 1]
-                        if edges[i, j] > 0:
+                        if edges[i, j] == 255 or edges[i, j - 1] == 255:
                             b[index] += diff_g
                         else:
                             b[index] += 0
                         if (i, j - 1) in mask_border:
-                            b[index] += s[i, j - 1]
+                            b[index] += t[i, j - 1]
 
                     if j < mask.shape[1] - 1:
                         diff_g = s[i, j] - s[i, j + 1]
-                        if edges[i, j] > 0:
+                        if edges[i, j] == 255 or edges[i, j + 1] == 255:
                             b[index] += diff_g
                         else:
                             b[index] += 0
                         if (i, j + 1) in mask_border:
-                            b[index] += s[i, j + 1]
+                            b[index] += t[i, j + 1]
                 else:
-                    b[index] = s[i, j]
+                    if i < t.shape[0] and j < t.shape[1]:
+                        b[index] = t[i, j]
 
-            x = spsolve(A, b)
-            x = x.reshape(source.shape[:2])
-            x[x > 1] = 1
-            x[x < 0] = 0
-            source[:, :, channel] = x
+        x = spsolve(A, b)
+        x = x.reshape(region_size)
+        x[x > 1] = 1
+        x[x < 0] = 0
 
-    return source
+        if len(target.shape) > 2:
+            target[target_region[0]:target_region[2], target_region[1]:target_region[3], channel] = x
+        else:
+            target[target_region[0]:target_region[2], target_region[1]:target_region[3]] = x
+
+    return target
 
 
 def save_images(dir, source, target, mask):
@@ -307,6 +332,25 @@ if __name__ == '__main__':
     # result = poisson_editing(source_array, target_array, mask_array, offset=(50, 30), mixing=True)
     # im_result = Image.fromarray((result * 255).astype(np.uint8))
     # im_result.save('pera/risultati_finali/result_monochrome_mixed.jpg', 'JPEG')
+    # im_result.show()
+
+    '''Pera 2'''
+    # source = Image.open('pera/pera_target2.jpg')
+    # source = ImageOps.grayscale(source)
+    # target = Image.open('pera/pomodoro2.jpg')
+    # mask = Image.open('pera/mask_prova.jpg')
+    # mask = ImageOps.grayscale(mask)
+    #
+    # source = source.resize((source.size[0] // 4, source.size[1] // 4))
+    # target = target.resize((target.size[0] // 4, target.size[1] // 4))
+    # mask = mask.resize((mask.size[0] // 4, mask.size[1] // 4))
+    #
+    # source_array = np.array(source)
+    # target_array = np.array(target)
+    # mask_array = np.array(mask)
+    #
+    # result = poisson_editing(source_array, target_array, mask_array, offset=(-50, 0))
+    # im_result = Image.fromarray((result * 255).astype(np.uint8))
     # im_result.show()
 
     '''Lavagna'''
@@ -369,22 +413,36 @@ if __name__ == '__main__':
     # im_result.save('rainbow/risultati_finali/result_mixed.jpg', 'JPEG')
     # im_result.show()
 
-    '''Local color changes'''
-    source = Image.open('flower/source.jpg')
-    target = Image.open('flower/source.jpg').convert('L')
-    mask = Image.open('flower/mask.jpg')
+    '''Texture flattening'''
+    source = Image.open('face_texture_flt/source_res.jpg')
+    grayscale_src = Image.open('face_texture_flt/source.jpg').convert('L')
+    mask = Image.open('face_texture_flt/mask_res.jpg')
     mask = ImageOps.grayscale(mask)
 
-    source = source.resize((source.size[0] // 4, source.size[1] // 4))
-    target = target.resize((target.size[0] // 4, target.size[1] // 4))
-    mask = mask.resize((mask.size[0] // 4, mask.size[1] // 4))
-    save_images("flower", source, target, mask)
-
     source_array = np.array(source)
-    target_array = np.array(target)
     mask_array = np.array(mask)
 
-    result = poisson_editing(source_array, target_array, mask_array, mixing=False)
+    result = texture_flattening(source_array, grayscale_src, mask_array)
     im_result = Image.fromarray((result * 255).astype(np.uint8))
-    im_result.save('flower/risultati_finali/result.jpg', 'JPEG')
+    im_result.save('face_texture_flt/result.jpg', 'JPEG')
     im_result.show()
+
+    '''Local color changes'''
+    # source = Image.open('flower/source.jpg')
+    # target = Image.open('flower/source.jpg').convert('L')
+    # mask = Image.open('flower/mask.jpg')
+    # mask = ImageOps.grayscale(mask)
+    #
+    # source = source.resize((source.size[0] // 4, source.size[1] // 4))
+    # target = target.resize((target.size[0] // 4, target.size[1] // 4))
+    # mask = mask.resize((mask.size[0] // 4, mask.size[1] // 4))
+    # save_images("flower", source, target, mask)
+    #
+    # source_array = np.array(source)
+    # target_array = np.array(target)
+    # mask_array = np.array(mask)
+    #
+    # result = poisson_editing(source_array, target_array, mask_array, mixing=False)
+    # im_result = Image.fromarray((result * 255).astype(np.uint8))
+    # im_result.save('flower/risultati_finali/result.jpg', 'JPEG')
+    # im_result.show()
