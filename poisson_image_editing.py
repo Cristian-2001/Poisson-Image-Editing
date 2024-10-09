@@ -5,7 +5,17 @@ from scipy.sparse.linalg import spsolve
 
 
 def preprocess_mask(mask):
-    # mask_border = np.zeros_like(mask)
+    """
+    Preprocess the mask to create a binary mask and identify the border pixels.
+
+    Parameters:
+    mask (numpy.ndarray): The input mask image.
+
+    Returns:
+    tuple: A tuple containing:
+        - mask (numpy.ndarray): The binary mask where pixels are either 0 or 255.
+        - mask_border (list): A list of tuples representing the coordinates of the border pixels.
+    """
     mask_border = []
     for i in range(mask.shape[0]):
         for j in range(mask.shape[1]):
@@ -18,21 +28,31 @@ def preprocess_mask(mask):
         for j in range(mask.shape[1]):
             if mask[i, j] == 0:
                 if i > 0 and mask[i - 1, j] == 255:
-                    # mask_border[i, j] = 255
                     mask_border.append((i, j))
                 elif j > 0 and mask[i, j - 1] == 255:
-                    # mask_border[i, j] = 255
                     mask_border.append((i, j))
                 elif i < mask.shape[0] - 1 and mask[i + 1, j] == 255:
-                    # mask_border[i, j] = 255
                     mask_border.append((i, j))
                 elif j < mask.shape[1] - 1 and mask[i, j + 1] == 255:
-                    # mask_border[i, j] = 255
                     mask_border.append((i, j))
     return mask, mask_border
 
 
 def compute_regions(source, target, offset):
+    """
+    Compute the regions of interest in the source and target images based on the given offset.
+
+    Parameters:
+    source (numpy.ndarray): The source image.
+    target (numpy.ndarray): The target image.
+    offset (tuple): The offset (x, y) to position the source image within the target image.
+
+    Returns:
+    tuple: A tuple containing:
+        - source_region (tuple): The region of interest in the source image (top, left, bottom, right).
+        - target_region (tuple): The region of interest in the target image (top, left, bottom, right).
+        - region_size (tuple): The size of the region (height, width).
+    """
     source_region = (
         max(-offset[0], 0),  # right
         max(-offset[1], 0),  # top
@@ -50,6 +70,19 @@ def compute_regions(source, target, offset):
 
 
 def poisson_editing(source, target, mask, offset=(0, 0), mixing=False):
+    """
+    Perform Poisson image editing to blend a source image into a target image seamlessly using a mask.
+
+    Parameters:
+    source (numpy.ndarray): The source image to be blended.
+    target (numpy.ndarray): The target image where the source image will be blended.
+    mask (numpy.ndarray): The mask defining the region of interest for blending.
+    offset (tuple): The offset (x, y) to position the source image within the target image.
+    mixing (bool): If True, use gradient mixing for blending.
+
+    Returns:
+    numpy.ndarray: The resulting image after Poisson editing.
+    """
     source = source.astype(np.float32) / 255.0
     target = target.astype(np.float32) / 255.0
 
@@ -60,10 +93,14 @@ def poisson_editing(source, target, mask, offset=(0, 0), mixing=False):
 
     size = np.prod(region_size)
     A = scipy.sparse.identity(size, format='lil')  # Create a sparse matrix with dimensions size x size
+
+    # Iterate over the region of interest and update the matrix A
     for i in range(region_size[0]):
         for j in range(region_size[1]):
             index = i * region_size[1] + j
             if mask[i, j] == 255:
+
+                # Set the diagonal value to 4, i.e., the number of neighbors. Then subtract 1 for each border pixel.
                 A[index, index] = 4
                 if i == 0:
                     A[index, index] -= 1
@@ -74,6 +111,7 @@ def poisson_editing(source, target, mask, offset=(0, 0), mixing=False):
                 if j == region_size[1] - 1:
                     A[index, index] -= 1
 
+                # Update the neighboring pixels
                 if index + 1 < size and flt_mask[index + 1] == 255:
                     A[index + 1, index] = -1
                 if index - 1 >= 0 and flt_mask[index - 1] == 255:
@@ -84,28 +122,29 @@ def poisson_editing(source, target, mask, offset=(0, 0), mixing=False):
                     A[index, index - mask.shape[1]] = -1
     A = A.tocsr()
 
+    # Ensure the target image has three color channels
     if len(target.shape) < 3:
         target = np.repeat(target[:, :, np.newaxis], 3, axis=2)
-    # print(target.shape)
 
+    # Iterate over the color channels and solve the linear system for each channel
     for channel in range(target.shape[2]):
         b = np.zeros(size, dtype=np.float32)
 
+        # Extract the source and target regions for the current channel
         if len(target.shape) > 2:
             t = target[target_region[0]:target_region[2], target_region[1]:target_region[3], channel]
         else:
             t = target[target_region[0]:target_region[2], target_region[1]:target_region[3]]
-
         if len(source.shape) > 2:
             s = source[source_region[0]:source_region[2], source_region[1]:source_region[3], channel]
         else:
             s = source[source_region[0]:source_region[2], source_region[1]:source_region[3]]
-        # t = t.flatten()
-        # s = s.flatten()
 
         for i in range(region_size[0]):
             for j in range(region_size[1]):
                 index = i * mask.shape[1] + j
+
+                # If the pixel is part of the mask, compute the gradient and update the b vector
                 if mask[i, j] == 255:
                     if i > 0:
                         diff_g = s[i, j] - s[i - 1, j]
@@ -162,6 +201,7 @@ def poisson_editing(source, target, mask, offset=(0, 0), mixing=False):
                     if i < t.shape[0] and j < t.shape[1]:
                         b[index] = t[i, j]
 
+        # Solve the linear system, reshape the result to the region size and clip the values
         x = spsolve(A, b)
         x = x.reshape(region_size)
         x[x > 1] = 1
@@ -176,10 +216,21 @@ def poisson_editing(source, target, mask, offset=(0, 0), mixing=False):
 
 
 def texture_flattening(source, grayscale_src, mask):
+    """
+    Perform texture flattening on the source image using the grayscale source and mask.
+
+    Parameters:
+    source (numpy.ndarray): The source image.
+    grayscale_src (PIL.Image.Image): The grayscale version of the source image.
+    mask (numpy.ndarray): The mask defining the region of interest.
+
+    Returns:
+    numpy.ndarray: The resulting image after texture flattening.
+    """
     source = source.astype(np.float32) / 255.0
 
+    # Detect edges in the grayscale source image
     edges_im = grayscale_src.filter(ImageFilter.FIND_EDGES)
-    # edges_im.show()
     edges = np.array(edges_im)
     for i in range(edges.shape[0]):
         for j in range(edges.shape[1]):
@@ -190,11 +241,13 @@ def texture_flattening(source, grayscale_src, mask):
 
     target = source
 
+    # Compute regions of interest in the source and target images
     source_region, target_region, region_size = compute_regions(source, target, (0, 0))
     mask = mask[source_region[0]:source_region[2], source_region[1]:source_region[3]]
     mask, mask_border = preprocess_mask(mask)
     flt_mask = mask.flatten()
 
+    # Initialize the sparse matrix A
     size = np.prod(source.shape[:2])
     A = scipy.sparse.identity(size, format='lil')
     for i in range(source.shape[0]):
@@ -221,6 +274,7 @@ def texture_flattening(source, grayscale_src, mask):
                     A[index, index - source.shape[1]] = -1
     A = A.tocsr()
 
+    # Iterate over each color channel and solve the linear system
     for channel in range(target.shape[2]):
         b = np.zeros(size, dtype=np.float32)
 
@@ -233,12 +287,13 @@ def texture_flattening(source, grayscale_src, mask):
             s = source[source_region[0]:source_region[2], source_region[1]:source_region[3], channel]
         else:
             s = source[source_region[0]:source_region[2], source_region[1]:source_region[3]]
-        # t = t.flatten()
-        # s = s.flatten()
 
         for i in range(region_size[0]):
             for j in range(region_size[1]):
                 index = i * mask.shape[1] + j
+
+                # If the pixel is part of the mask, compute the gradient and update the b vector
+                # If is present an edge, the gradient is computed otherwise sum 0
                 if mask[i, j] == 255:
                     if i > 0:
                         diff_g = s[i, j] - s[i - 1, j]
@@ -299,6 +354,7 @@ def save_images(dir, source, target, mask):
 
 
 if __name__ == '__main__':
+    '''Test 1'''
     # source = Image.open('testimages/test1_src.png')
     # target = Image.open('testimages/test1_target.png')
     # mask = Image.open('testimages/test1_mask.png')
